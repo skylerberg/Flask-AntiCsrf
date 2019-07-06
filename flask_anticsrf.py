@@ -3,7 +3,7 @@ from urllib.parse import urlparse
 from flask import request, abort
 
 
-__version_info__ = ('0', '0', '1')
+__version_info__ = ('0', '0', '2')
 __version__ = '.'.join(__version_info__)
 __author__ = 'Skyler Berg'
 __license__ = 'APACHE 2.0'
@@ -26,10 +26,11 @@ class AntiCsrf(object):
     def __init__(self, app):
         self.app = app
         self._error_handler = lambda exception: abort(403)
+        self.unprotected_endpoints = set()
 
         @app.before_request
         def prevent_csrf():
-            if request.method in SAFE_METHODS:
+            if request.method in SAFE_METHODS or request.endpoint in self.unprotected_endpoints:
                 return
             origin = None
             host = None
@@ -57,3 +58,12 @@ class AntiCsrf(object):
 
     def set_error_handler(self, error_handler):
         self._error_handler = error_handler
+
+    def disable_protection(self, function):
+        '''
+        Decorator for unprotected routes
+
+        WARNING: Using this will mark all routes with same method name as unprotected.
+        '''
+        self.unprotected_endpoints.add(function.__name__)
+        return function
